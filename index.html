@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Human In The Loop EMG Project</title>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #ffffff;
+      --panel2: #f7f7f7;
+      --border: #d9d9d9;
+      --text: #111111;
+      --muted: #555555;
+      --accent: #9e1b32;
+      --accent-dark: #7a1527;
+      --good: #1f9d55;
+      --bad: #d64545;
+      --warn: #c98500;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      overflow: hidden;
+    }
+
+    #root {
+      width: 100%;
+      height: 100%;
+    }
+
+    .app-shell {
+      width: 100vw;
+      height: 100vh;
+      padding: 14px;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .hero {
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
+    .hero h1 {
+      margin: 0 0 4px 0;
+      font-size: 30px;
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .main-dashboard {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 14px;
+      height: calc(100vh - 78px);
+      min-height: 0;
+    }
+
+    .left-panel,
+    .right-panel {
+      min-height: 0;
+    }
+
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .left-top {
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: var(--bg);
+      padding-bottom: 10px;
+    }
+
+    .left-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: grid;
+      gap: 12px;
+      padding-right: 4px;
+      align-content: start;
+    }
+
+    .right-panel {
+      overflow-y: auto;
+      padding-right: 4px;
+      min-height: 0;
+    }
+
+    .right-stack {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+      min-height: 0;
+    }
+
+    .card h2 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+      color: var(--accent);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    button, select {
+      background: var(--accent);
+      border: 1px solid var(--accent);
+      color: #ffffff;
+      border-radius: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    button:hover, select:hover {
+      background: var(--accent-dark);
+      border-color: var(--accent-dark);
+    }
+
+    button.secondary {
+      background: #ffffff;
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    button.secondary:hover {
+      background: #f1f1f1;
+      border-color: #c9c9c9;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .metric-box {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      min-width: 0;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .metric-value {
+      font-size: 18px;
+      font-weight: bold;
+      word-break: break-word;
+      color: var(--text);
+    }
+
+    .big-value {
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--accent);
+    }
+
+    .pill-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .chart-wrap {
+      height: 100%;
+      min-height: 520px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px;
+      display: flex;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 10px;
+      background: #ffffff;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .status-good { color: var(--good); font-weight: bold; }
+    .status-bad { color: var(--bad); font-weight: bold; }
+    .status-warn { color: var(--warn); font-weight: bold; }
+    .status-accent { color: var(--accent); font-weight: bold; }
+
+    .left-scroll::-webkit-scrollbar,
+    .right-panel::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .left-scroll::-webkit-scrollbar-track,
+    .right-panel::-webkit-scrollbar-track {
+      background: #f0f0f0;
+      border-radius: 10px;
+    }
+
+    .left-scroll::-webkit-scrollbar-thumb,
+    .right-panel::-webkit-scrollbar-thumb {
+      background: #c7c7c7;
+      border-radius: 10px;
+    }
+
+    .left-scroll::-webkit-scrollbar-thumb:hover,
+    .right-panel::-webkit-scrollbar-thumb:hover {
+      background: #aaaaaa;
+    }
+
+    @media (max-width: 1200px) {
+      html, body {
+        overflow: auto;
+      }
+
+      .app-shell {
+        height: auto;
+        overflow: auto;
+      }
+
+      .main-dashboard {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+
+      .left-top {
+        position: static;
+      }
+
+      .left-scroll,
+      .right-panel {
+        overflow: visible;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="./main.js"></script>
+</body>
+</html>
